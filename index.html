@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>防疫滿福寶</title>
+    
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 載入 React 核心庫 -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- 載入 Babel (讓瀏覽器可以直接看懂 JSX 語法) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- 載入 Google 字體 -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- 自訂 CSS 動畫與字體設定 -->
+    <style>
+        body { font-family: 'Noto Sans TC', sans-serif; }
+        .font-serif { font-family: 'Noto Serif TC', serif; }
+        .animate-fade-in-up { animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        input[type=range] {
+            -webkit-appearance: none;
+            background: #E2E8DE;
+            height: 4px;
+            border-radius: 2px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #5E7163;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="bg-[#FDFBF7] text-[#4A4A4A] selection:bg-[#E2E8DE] selection:text-[#334139]">
+    <!-- React 應用的掛載點 -->
+    <div id="root"></div>
+
+    <!-- React 程式碼區塊 -->
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- SVG 圖示庫 (取代原本的 lucide-react 以確保不須編譯器就能執行) ---
+        const IconData = {
+            Heart: <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>,
+            Wind: <><path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2"/><path d="M9.6 4.6A2 2 0 1 1 11 8H2"/><path d="M12.6 19.4A2 2 0 1 0 14 16H2"/></>,
+            ShieldCheck: <><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2-1 4-2 7-2 2.89 0 4.789 1 6.993 1.896a1 1 0 0 1 .593.896Z"/><path d="m9 12 2 2 4-4"/></>,
+            Users: <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>,
+            Home: <><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></>,
+            Sprout: <><path d="M7 20h10"/><path d="M10 20c5.5-2.5.8-6.4 3-10"/><path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z"/><path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 .5-4.9 2z"/></>,
+            Building: <><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></>,
+            ChevronLeft: <path d="m15 18-6-6 6-6"/>,
+            BookOpen: <><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></>,
+            Info: <><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></>,
+            CheckCircle2: <><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></>
+        };
+
+        const SVGIcon = ({ name, size = 24, className = "" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                {IconData[name]}
+            </svg>
+        );
+
+        // --- 資料區 ---
+        const introText = "滿福寶就是福音，福音就是好消息，是報告上帝為我們做的事。而最重要的事是，耶穌是上帝，卻為我們成為人來到世上，為我們的罪死在十字架上，並且從死裏復活。祂藉著這件事，帶來極豐滿的祝福，因此我們稱之為滿福寶。";
+
+        const blessings = [
+            {
+                id: 1, title: "病得醫治", icon: "Heart",
+                verses: [
+                    "我的心哪，你要稱頌耶和華！不可忘記祂的一切恩惠！祂赦免你的一切罪孽，醫治你的一切疾病。祂救贖你的命脫離死亡，以仁愛和慈悲為你的冠冕。(詩篇103:2-4)",
+                    "哪知祂為我們的過犯受害，為我們的罪孽壓傷。因祂受的刑罰，我們得平安；因祂受的鞭傷，我們得醫治。(以賽亞書53:5)"
+                ],
+                prayer: {
+                    thanks: "親愛的天父，謝謝祢願意幫助我。",
+                    invite: "天父，我需要祢的幫助，我願意接受耶穌作我的救主，邀請耶穌進到我心裏，永遠與我同在。",
+                    plea: "主啊！了解我的痛苦，知道我的疾病。懇求祢醫治我的(甚麼病)，救拔我脫離疾病的苦痛。懇求祢賜給我信心，相信祢能醫治我。主啊！也求祢給醫師智慧和能力，為我做最好的診斷和醫療，使我恢復健康、身體強壯。主啊！懇求祢赦免我一切知道或不知道的罪，不容罪攔阻耶穌要給我的醫治。",
+                    sincere: "奉耶穌的名禱告，阿們(誠心所願)。"
+                }
+            },
+            {
+                id: 2, title: "心靈平安", icon: "Wind",
+                verses: [
+                    "不叫我們遇見試探；救我們脫離凶惡，因為國度、權柄、榮耀，全是祢的，直到永遠。(馬太福音 6:13)",
+                    "耶和華說：我知道我向你們所懷的意念是賜平安的意念，不是降災禍的意念，要叫你們末後有指望。(耶利米書 29:11)"
+                ],
+                prayer: {
+                    thanks: "親愛的天父，謝謝祢願意幫助我。",
+                    invite: "天父，我需要祢的幫助，我願意接受耶穌作我的救主，邀請耶穌進到我心裏，永遠與我同在。",
+                    plea: "親愛的主耶穌，謝謝祢愛我。謝謝祢親自為我捨命在十字架上，我把我對疫情的擔憂害怕交給祢，知道祢掌權在整個疫情，祢樂意保護我和我的全家，也祝福我們有優質睡眠飲食，不僅我有平安，我也把平安分享給周圍的人。主啊！求祢赦免我一切知道或不知道的罪，不讓罪攔阻了上帝要給我的心靈平安。",
+                    sincere: "奉耶穌的名禱告，阿們(誠心所願)。"
+                }
+            },
+            {
+                id: 3, title: "提升免疫力", icon: "ShieldCheck",
+                verses: [
+                    "喜樂的心乃是良藥；憂傷的靈使骨枯乾。(箴言17:22)",
+                    "愛裏沒有懼怕；愛既完全，就把懼怕除去。因為懼怕裏含著刑罰，懼怕的人在愛裏未得完全。(約翰壹書 4:18)"
+                ],
+                prayer: {
+                    thanks: "親愛的天父，謝謝祢願意幫助我。",
+                    invite: "天父，我需要祢的幫助，我願意接受耶穌作我的救主，邀請耶穌進到我心裏，永遠與我同在。",
+                    plea: "天父，祢是愛與喜樂的源頭，求祢使我和我的家人，每天被愛與喜樂充滿，可以脫離面對疫情的憂慮與懼怕。天父，請祢救我們遠離任何有害病毒、病菌的感染，保護我和家人的免疫系統，都可以健康正常地運作，有效抵擋病毒、病菌的影響。求主幫助我們能夠注意健康的飲食、良好的作息和衛生習慣，提升強化自我的免疫力，好叫一切知名或不知名的病毒、病菌，都不能破壞我們身心靈的健康。主啊，求祢赦免我們一切知道或不知道的罪，不讓罪阻斷耶穌要賜給我們提升免疫力的祝福。",
+                    sincere: "奉耶穌的名禱告，阿們(誠心所願)。"
+                }
+            },
+            {
+                id: 4, title: "關係和睦", icon: "Users",
+                verses: [
+                    "不求自己的益處，不輕易發怒，不計算人的惡……凡事包容，凡事相信，凡事盼望，凡事忍耐。愛是永不止息。(哥林多前書 13:5,7-8)",
+                    "總而言之，你們都要同心，彼此體恤，相愛如弟兄，存慈憐謙卑的心。不以惡報惡，以辱罵還辱罵，倒要祝福；因你們是為此蒙召，好叫你們承受福氣。(彼得前書 3:8-9)"
+                ],
+                prayer: {
+                    thanks: "親愛的天父，謝謝祢願意幫助我。",
+                    invite: "天父，我需要祢的幫助，我願意接受耶穌作我的救主，邀請耶穌進到我心裏，永遠與我同在。",
+                    plea: "主耶穌，謝謝祢是聽我們禱告的上帝，樂意幫助與賜福氣給我們。我把我與同事、家人、朋友以及身邊與我互動的陌生人等的關係交託給祢，讓我不會只注意自己的需要，活在自我中心與擔心害怕的裏面，也讓我不需要自我防衛。我把我的缺乏與害怕告訴祢，讓我在祢那裏得到豐富與愛人的心，可以包容、忍耐，並且因為祢住在我的心裏，我就有永恆的平安。主啊！求祢赦免我一切知道或不知道的罪，不讓罪攔阻了耶穌要給我和睦的關係。",
+                    sincere: "奉耶穌的名禱告，阿們(誠心所願)。"
+                }
+            },
+            {
+                id: 5, title: "家庭平安", icon: "Home",
+                verses: [
+                    "耶和華要保護你，免受一切的災害；祂要保護你的性命。你出你入，耶和華要保護你，從今時直到永遠。(詩篇121:7-8)",
+                    "我留下平安給你們；我將我的平安賜給你們。我所賜的，不像世人所賜的。你們心裏不要憂愁，也不要膽怯。(約翰福音14:27)"
+                ],
+                prayer: {
+                    thanks: "親愛的天父，祢是全能又慈愛的上帝，謝謝祢願意幫助我。",
+                    invite: "天父，我需要祢的幫助，我願意接受耶穌作我的救主，邀請耶穌進到我心裏，永遠與我同在。",
+                    plea: "主啊，祢是賜平安的上帝，也是保護我們的上帝，祢要保護我的家人脫離傳染性疾病(新型冠狀病毒、流感、肺炎……)的感染及傷害，也提升每位大小家人的免疫力，幫助我們正確做好防護的工作，在疫情嚴峻的時候有平安。已經感染疾病的家人，也能得到好的醫療照顧，身體得以康復，生活恢復正常。主啊！謝謝祢對我們全家的眷顧保護，也求祢赦免我們全家一切知道或不知道的罪，不讓任何罪攔阻祢要給我們的家庭平安。",
+                    sincere: "奉耶穌的名禱告，阿們(誠心所願)。"
+                }
+            },
+            {
+                id: 6, title: "經濟財務豐盛", icon: "Sprout",
+                verses: [
+                    "耶和華是我的產業，是我杯中的分；我所得的，祢為我持守。用繩量給我的地界，坐落在佳美之處；我的產業實在美好。(詩篇16:5-6)",
+                    "你們知道我們主耶穌基督的恩典：祂本來富足，卻為你們成了貧窮，叫你們因祂的貧窮，可以成為富足。(哥林多後書 8:9)"
+                ],
+                prayer: {
+                    thanks: "親愛的天父，謝謝祢願意幫助我。",
+                    invite: "天父，我需要祢的幫助，我願意接受耶穌作我的救主，邀請耶穌進到我心裏，永遠與我同在。",
+                    plea: "主啊！祢是富足的上帝，面對瘟疫的襲擊，我仍然要倚靠祢有平安，祢要拯救我脫離在經濟財務上的憂慮，賜我智慧和能力，在工作上蒙福，並作財務的好管家。因這瘟疫所產生在經濟上的缺乏、工作上的問題，以及(甚麼困難)都能因著祢的幫助得到解決。請幫助我常常持守一顆感恩的心，因為我所有的一 切，都是從祢而來，我要繼續領受祢在經濟財務上信實的供應，常常知足，並且能多多施捨。主啊！求祢赦免我一切知道或不知道的罪，不讓罪阻斷了耶穌要給我的豐盛。",
+                    sincere: "奉耶穌的名禱告，阿們(誠心所願)。"
+                }
+            },
+            {
+                id: 7, title: "政府醫療", icon: "Building",
+                verses: [
+                    "你若留意聽耶和華 你上帝的話，又行我眼中看為正的事，留心聽我的誡命，守我一切的律例，我就不將所加與埃及人的疾病加在你身上，因為我——耶和華是醫治你的。(出埃及記 15:26)",
+                    "耶和華啊，尊大、能力、榮耀、強勝、威嚴都是祢的；凡天上地下的都是祢的；國度也是祢的，並且祢為至高，為萬有之首。(歷代志上29:11)"
+                ],
+                prayer: {
+                    thanks: "親愛的天父，謝謝祢願意幫助我。",
+                    invite: "天父，我需要祢的幫助，我願意接受耶穌作我的救主，邀請耶穌進到我心裏，永遠與我同在。",
+                    plea: "親愛的主耶穌，祢是統管萬有的全能者，卻甘願道成肉身來到世上，用祢十字架上的寶血洗淨我們一切過犯，為要拯救一切相信祢的人。主耶穌，我樂意邀請祢成為我個人身體健康的主，也成為所有(國家名、城市名)人身體健康的主。願祢的寶血潔淨(國家名、城市名)全地，赦免我們一切的罪，也願祢賜下敬畏耶和華的靈在執政者身上，好叫政府得著智慧，知道如何帶領國家社會遠離各樣流行疾病和一切凶惡。謝謝主，我相信祢樂意讓我們的身心靈享受在基督裏完全的健康。",
+                    sincere: "奉耶穌的名禱告，阿們(誠心所願)。"
+                }
+            }
+        ];
+
+        const stepsToGet = [
+            { title: "要知道 ~ 上帝愛我", content: "上帝按著祂自己的形象創造我們，原本就是要我們享受祂的愛與豐富，因為上帝是我們的天父，祂既然造我們就必用永遠的愛愛我們。但為什麼我們得不到上帝的愛呢？" },
+            { title: "要承認 ~ 人有罪", content: "因為我們犯罪(包括心裏的、口裏的、行為上的罪)就阻斷了上帝要給我們的愛與豐富。所以我們要承認自己的罪，為的是解決罪的問題，如何解決呢？" },
+            { title: "要明白 ~ 耶穌的死擔當我們的罪", content: "耶穌的死就是為了解決罪的問題，使信祂的人罪得赦免，並且使人可以回到上帝面前得到滿福寶的祝福。但如何得到耶穌的死帶給我們的祝福？" },
+            { title: "要接受 ~ 耶穌作救主", content: "當我們透過禱告作出正確的決定，承認罪並接受耶穌作救主，就必得到耶穌赦免我們的罪，如此使我們可以透過禱告，得到滿福寶帶來的七重祝福。但更重要的是「得著主耶穌是我們一生最寶貴的祝福」。" }
+        ];
+
+        const keysToKeep = [
+            { title: "信而受洗", content: "真實的信心是透過受洗來表明，而持續用信心向祂禱告，必要得著上帝滿滿的祝福。\n\n信而受洗的，必然得救；(馬可福音16章16節)\n所以我告訴你們，凡你們禱告祈求的，無論是甚麼，只要信是得著的，就必得著。(馬可福音11章24節)" },
+            { title: "與有信心的基督徒常在一起", content: "上帝做事的法則，常常是透過基督徒一起聚會、敬拜和禱告來成就。\n\n我又告訴你們，若是你們中間有兩個人，在地上同心合意地求甚麼事，我在天上的父必為他們成全；因為無論在哪裏，有兩三個人奉我的名聚會，那裏就有我在他們中間。(馬太福音18章19-20節)" },
+            { title: "持續禱告、等候", content: "雖然我們能在禱告中得著神的賜福，但有時禱告並不會立即完全成就，除了持續禱告、等候之外，也要相信將來在天堂裏一切的祝福都要完全實現。而現在你得著耶穌、得著聖靈是你永遠蒙福的保證。\n\n你們既聽見真理的道，就是那叫你們得救的福音，也信了基督，既然信祂，就受了所應許的聖靈為印記。這聖靈是我們得基業憑據，直等到上帝之民被贖，使祂的榮耀得著稱讚。(以弗所書1章13-14節)" }
+        ];
+
+        // --- 禱告文排版小元件 ---
+        function PrayerStep({ num, title, content, isLong, baseFontSize }) {
+            return (
+                <div className="flex gap-4 md:gap-6">
+                    <div className="shrink-0 mt-1">
+                        <span className="text-[#C1C8C3] font-serif text-xl font-bold">{num}.</span>
+                    </div>
+                    <div>
+                        <h4 className="text-[#5E7163] font-bold tracking-widest mb-2" style={{ fontSize: `${baseFontSize + 2}px` }}>{title}</h4>
+                        <p 
+                            className={`text-[#4A4A4A] ${isLong ? 'text-justify' : ''} font-bold`}
+                            style={{ fontSize: `${baseFontSize}px`, lineHeight: '1.8' }}
+                        >
+                            {content}
+                        </p>
+                    </div>
+                </div>
+            );
+        }
+
+        // --- 主應用程式元件 ---
+        function App() {
+            const [currentView, setCurrentView] = useState('home');
+            const [selectedBlessing, setSelectedBlessing] = useState(null);
+            const [baseFontSize, setBaseFontSize] = useState(16);
+
+            useEffect(() => {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }, [currentView, selectedBlessing]);
+
+            const handleBlessingClick = (blessing) => {
+                setSelectedBlessing(blessing);
+                setCurrentView('blessing');
+            };
+
+            const goHome = () => {
+                setCurrentView('home');
+                setTimeout(() => setSelectedBlessing(null), 300);
+            };
+
+            return (
+                <div className="min-h-screen">
+                    <nav className="sticky top-0 z-50 bg-[#FDFBF7]/80 backdrop-blur-md border-b border-[#E2E8DE] px-4 md:px-6 py-4 flex items-center justify-between shadow-sm">
+                        <div className="w-16 md:w-24">
+                            {currentView !== 'home' && (
+                                <button onClick={goHome} className="text-[#5E7163] hover:text-[#334139] transition-colors flex items-center gap-1">
+                                    <SVGIcon name="ChevronLeft" size={20} />
+                                    <span className="text-sm tracking-widest hidden sm:inline font-bold">返回</span>
+                                </button>
+                            )}
+                        </div>
+                        
+                        <h1 className="text-2xl md:text-3xl font-serif text-[#5E7163] tracking-[0.2em] font-bold text-center flex-1">
+                            防疫滿福寶
+                        </h1>
+
+                        <div className="flex items-center gap-2 w-auto justify-end text-[#5E7163]" title="調整字體大小">
+                            <span className="text-xs font-bold">A</span>
+                            <input 
+                                type="range" min="14" max="26" value={baseFontSize} 
+                                onChange={(e) => setBaseFontSize(Number(e.target.value))}
+                                className="w-16 md:w-24 accent-[#5E7163] cursor-pointer"
+                            />
+                            <span className="text-lg font-bold">A</span>
+                        </div>
+                    </nav>
+
+                    <main className="max-w-3xl mx-auto px-6 py-10">
+                        {currentView === 'home' && (
+                            <div className="animate-fade-in-up">
+                                <section className="mb-14 text-center">
+                                    <div className="inline-flex justify-center items-center w-12 h-12 rounded-full bg-[#E2E8DE] text-[#5E7163] mb-6">
+                                        <SVGIcon name="BookOpen" size={24} />
+                                    </div>
+                                    <h2 className="text-2xl font-serif text-[#334139] mb-4 tracking-wider font-bold">甚麼是滿福寶？</h2>
+                                    <p className="text-[#6B7280] text-justify md:text-center px-2 md:px-10 font-bold" style={{ fontSize: `${baseFontSize}px`, lineHeight: '1.8' }}>
+                                        {introText}
+                                    </p>
+                                </section>
+
+                                <div className="w-12 h-px bg-[#E2E8DE] mx-auto mb-14"></div>
+
+                                <section className="mb-16">
+                                    <h2 className="text-xl font-serif text-[#334139] mb-8 text-center tracking-widest font-bold">現在您最希望得到甚麼祝福？</h2>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {blessings.map((blessing) => (
+                                            <button key={blessing.id} onClick={() => handleBlessingClick(blessing)} className="group relative bg-white border border-[#EBEBEB] p-6 rounded-2xl flex items-center gap-5 hover:border-[#5E7163]/30 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300 text-left overflow-hidden">
+                                                <div className="w-12 h-12 rounded-full bg-[#F5F7F4] text-[#5E7163] flex items-center justify-center group-hover:bg-[#5E7163] group-hover:text-white transition-colors duration-300 shrink-0">
+                                                    <SVGIcon name={blessing.icon} size={24} />
+                                                </div>
+                                                <div>
+                                                    <span className="text-sm text-[#A0AAB2] mb-1 block font-bold">祝福 {blessing.id}</span>
+                                                    <h3 className="text-lg font-bold tracking-wide text-[#334139]">{blessing.title}</h3>
+                                                </div>
+                                                <div className="absolute right-6 opacity-0 translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 text-[#5E7163]">
+                                                    <SVGIcon name="ChevronLeft" size={20} className="rotate-180" />
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </section>
+
+                                <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <button onClick={() => setCurrentView('steps')} className="bg-[#5E7163] text-white p-6 rounded-2xl text-left hover:bg-[#4a5a4f] transition-colors shadow-sm flex flex-col gap-3">
+                                        <SVGIcon name="Info" size={24} className="opacity-80" />
+                                        <h3 className="text-lg font-bold tracking-wide">得著滿福寶的<br/>四個步驟</h3>
+                                    </button>
+                                    <button onClick={() => setCurrentView('keys')} className="bg-white border border-[#5E7163]/20 text-[#5E7163] p-6 rounded-2xl text-left hover:bg-[#F5F7F4] transition-colors shadow-sm flex flex-col gap-3">
+                                        <SVGIcon name="CheckCircle2" size={24} className="opacity-80" />
+                                        <h3 className="text-lg font-bold tracking-wide">持續得著滿福寶的<br/>三個關鍵</h3>
+                                    </button>
+                                </section>
+                            </div>
+                        )}
+
+                        {currentView === 'blessing' && selectedBlessing && (
+                            <article className="animate-fade-in-up max-w-2xl mx-auto">
+                                <header className="text-center mb-12">
+                                    <div className="inline-flex justify-center items-center w-16 h-16 rounded-full bg-[#E2E8DE] text-[#5E7163] mb-6">
+                                        <SVGIcon name={selectedBlessing.icon} size={24} />
+                                    </div>
+                                    <h2 className="text-3xl font-serif text-[#334139] tracking-widest font-bold">{selectedBlessing.title}</h2>
+                                </header>
+
+                                <section className="mb-12 space-y-6">
+                                    {selectedBlessing.verses.map((verse, idx) => (
+                                        <blockquote key={idx} className="relative p-6 md:p-8 bg-white border-l-4 border-[#5E7163] rounded-r-2xl shadow-sm">
+                                            <p className="text-[#6B7280] font-serif font-bold" style={{ fontSize: `${baseFontSize}px`, lineHeight: '1.8' }}>
+                                                {verse}
+                                            </p>
+                                        </blockquote>
+                                    ))}
+                                </section>
+
+                                <div className="flex items-center gap-4 my-12">
+                                    <div className="h-px bg-[#E2E8DE] flex-1"></div>
+                                    <span className="text-[#A0AAB2] tracking-[0.3em] text-sm font-bold">禱告文</span>
+                                    <div className="h-px bg-[#E2E8DE] flex-1"></div>
+                                </div>
+
+                                <section className="bg-white rounded-3xl p-6 md:p-10 shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-[#F0F0F0]">
+                                    <div className="space-y-8">
+                                        <PrayerStep num="1" title="感謝" content={selectedBlessing.prayer.thanks} baseFontSize={baseFontSize} />
+                                        <PrayerStep num="2" title="邀請" content={selectedBlessing.prayer.invite} baseFontSize={baseFontSize} />
+                                        <PrayerStep num="3" title="祈求" content={selectedBlessing.prayer.plea} isLong baseFontSize={baseFontSize} />
+                                        <PrayerStep num="4" title="誠心" content={selectedBlessing.prayer.sincere} baseFontSize={baseFontSize} />
+                                    </div>
+                                </section>
+                            </article>
+                        )}
+
+                        {currentView === 'steps' && (
+                            <article className="animate-fade-in-up max-w-2xl mx-auto">
+                                <header className="mb-12 text-center">
+                                    <h2 className="text-3xl font-serif text-[#334139] tracking-widest font-bold">得著滿福寶的四個步驟</h2>
+                                </header>
+                                <div className="space-y-6">
+                                    {stepsToGet.map((step, idx) => (
+                                        <div key={idx} className="bg-white p-8 rounded-2xl shadow-sm border border-[#F0F0F0]">
+                                            <h3 className="text-lg font-bold text-[#5E7163] mb-4 flex items-center gap-3">
+                                                <span className="w-8 h-8 rounded-full bg-[#E2E8DE] flex items-center justify-center text-sm font-serif">{idx + 1}</span>
+                                                {step.title}
+                                            </h3>
+                                            <p className="text-[#6B7280] pl-11 font-bold" style={{ fontSize: `${baseFontSize}px`, lineHeight: '1.8' }}>
+                                                {step.content}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </article>
+                        )}
+
+                        {currentView === 'keys' && (
+                            <article className="animate-fade-in-up max-w-2xl mx-auto">
+                                <header className="mb-12 text-center">
+                                    <h2 className="text-3xl font-serif text-[#334139] tracking-widest font-bold">持續得著滿福寶的三個關鍵</h2>
+                                    <p className="text-[#A0AAB2] mt-4 font-bold" style={{ fontSize: `${baseFontSize - 2}px` }}>恭喜你已經用前面的禱告文禱告，為了幫助你持續活在滿福寶的七重祝福裏，有三個重要提醒。</p>
+                                </header>
+                                <div className="space-y-6">
+                                    {keysToKeep.map((key, idx) => (
+                                        <div key={idx} className="bg-white p-8 rounded-2xl shadow-sm border border-[#F0F0F0]">
+                                            <h3 className="text-lg font-bold text-[#5E7163] mb-4 flex items-center gap-3">
+                                                <span className="w-8 h-8 rounded-full bg-[#F5F7F4] flex items-center justify-center text-sm font-serif border border-[#E2E8DE]">{idx + 1}</span>
+                                                {key.title}
+                                            </h3>
+                                            <p className="text-[#6B7280] pl-11 whitespace-pre-wrap font-bold" style={{ fontSize: `${baseFontSize}px`, lineHeight: '1.8' }}>
+                                                {key.content}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </article>
+                        )}
+                    </main>
+
+                    <footer className="mt-20 py-8 border-t border-[#E2E8DE] text-center">
+                        <p className="text-[#A0AAB2] text-sm tracking-wider font-bold mb-2">愛文協會</p>
+                        <p className="text-[#C1C8C3] text-xs font-bold">社團法人中華民國基督教愛文福音藝術傳播協會</p>
+                    </footer>
+                </div>
+            );
+        }
+
+        // 啟動 React 應用
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
+
